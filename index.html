@@ -18,6 +18,8 @@
     <script src="components/joystick-movement-component.js"></script>
     <script src="components/joystick-rotation-component.js"></script>
     <script src="components/trial-manager-system.js"></script>
+    <script src="components/disappear-on-touch.js"></script>
+    
 
   </head>
   <body>
@@ -32,7 +34,7 @@
                  dynamic-body shadow></a-mixin>
         <a-mixin id="target" color-randomizer droppable static-body
                  collision-filter="collisionForces: false"
-                 event-set__dragon="_event: dragover-start; material.wireframe: true"
+                 event-set__dragon="_e5vent: dragover-start; material.wireframe: true"
                  event-set__dragoff="_event: dragover-end; material.wireframe: false"
                  geometry="primitive: box; width: 0.75; height: 0.75; depth: 0.75"
                  shadow></a-mixin>
@@ -56,6 +58,7 @@
         </a-entity>
       </a-entity>
 
+
       <!-- <a-entity class="cube" mixin="cube" position="0 1.6 -1.25" material="color: red"></a-entity> -->
 
       <!-- <a-entity class="target" mixin="target" position = "-1 1.6 -1"
@@ -68,7 +71,23 @@
         <a-plane width="2" height="1" color="#333" opacity="0.7"></a-plane>
         <a-text id="uiText" value="" align="center" position="0 0 0.1" width="1.8"></a-text>
       </a-entity>
-    </a-scene>
+
+        <a-sphere position="-0.5 1.5 -0.5"
+                radius="0.1"
+                color="blue"
+                dynamic-body="mass: 0"
+                collision-filter="collisionForces: false"
+                hoverable
+                disappear-on-touch>
+      </a-sphere>
+
+      <a-sphere position="0.5 1.5 -0.5"
+                radius="0.1"
+                color="blue"
+                dynamic-body="mass: 0"
+                collision-filter="collisionForces: false"
+                disappear-on-touch>
+      </a-sphere>
 
      </body>
 </html>

@@ -5,6 +5,7 @@ AFRAME.registerSystem("trial-manager", {
       WELCOME: "WELCOME",
       CALIBRATE: "CALIBRATE",
       MOVINGOBJECT: "MOVINGOBJECT",
+      TOUCHINGOBJECT: "TOUCHINGOBJECT",
       FINISH: "FINISH"
     };
 
@@ -50,7 +51,7 @@ AFRAME.registerSystem("trial-manager", {
     switch (state) {
       case this.STATES.WELCOME:
         this.updateUIText(
-          "Welcome!\nUse your right controller grip to pick up a cube and move it to the red target area.\nDo this 5 times.\nPress the right controller grip to continue."
+          "Welcome!\nPress the right controller grip to continue."
         );
         setTimeout(() => {
           this.enterState(this.STATES.MOVINGOBJECT);
@@ -64,6 +65,12 @@ AFRAME.registerSystem("trial-manager", {
       case this.STATES.MOVINGOBJECT:
         this.updateUIText(`Trial ${this.trialCounter + 1}:\nGrab the green cube and move it to the red target area.\nRelease the grip to drop it.`);
         this.startCubeTrial();
+        break;
+      
+      case this.STATES.TOUCHINGOBJECT:
+        // Show all text (banner/instructions) for touching object stage.
+        this.updateUIText("Trial Complete!\n\nNow, touch the blue sphere for xxx times.\n\nUse either your left or right hand to touch the sphere.");
+        this.spawnTouchingSphere();
         break;
 
       case this.STATES.FINISH:
@@ -112,6 +119,25 @@ AFRAME.registerSystem("trial-manager", {
     this.cubeGrabbed = false;
   },
 
+
+  spawnTouchingSphere() {
+    // Create the blue sphere that should appear only in this state.
+    const sphere = document.createElement("a-sphere");
+    sphere.setAttribute("position", "0 1.5 -1"); // adjust position as needed
+    sphere.setAttribute("radius", "0.1");
+    sphere.setAttribute("color", "blue");
+    sphere.setAttribute("dynamic-body", "mass: 0");
+    sphere.setAttribute("collision-filter", "collisionForces: false");
+    sphere.setAttribute("disappear-on-touch", "");
+
+    sphere.addEventListener("sphere-touched", () => {
+      this.completeTrial();
+    });
+
+    this.sceneEl.appendChild(sphere);
+  },
+
+
   // Call this function when the trial has been successfully completed.
   completeTrial: function () {
     this.trialCounter++;
@@ -123,29 +149,28 @@ AFRAME.registerSystem("trial-manager", {
   },
 
   tick() {
-    if (!(this.sceneEl.is("vr-mode"))) return;
-
+    if (!this.sceneEl.is("vr-mode")) return;
     if (this.experimentState === this.STATES.MOVINGOBJECT && this.currentCube && this.currentTarget) {
-      //   const cubePos = new THREE.Vector3();
-      //   this.currentCube.object3D.getWorldPosition(cubePos);
-      //   if (!this.cubeGrabbed && cubePos.distanceTo(this.cubeInitialPosition) > 0.05) {
-      //     this.cubeGrabbed = true;
-      //   }
-      //   console.log(this.cubeGrabbed);
-      //   if (this.cubeGrabbed) {
-      //     const targetPos = new THREE.Vector3();
-      //     this.currentTarget.object3D.getWorldPosition(targetPos);
-      //     if (cubePos.distanceTo(targetPos) < 0.15) {
-      //       this.trialCounter++;
-      //       this.currentCube.remove();
-      //       this.currentTarget.remove();
-      //       this.currentCube = currentTarget = null;
-      //       this.cubeGrabbed = false;
-      //       setTimeout(() => {
-      //         this.enterState(this.trialCounter < this.totalTrials ? this.STATES.MOVINGOBJECT : this.STATES.FINISH);
-      //       }, 500);
-      //     }
-      //   }
+      const cubePos = new THREE.Vector3();
+      this.currentCube.object3D.getWorldPosition(cubePos);
+      if (!this.cubeGrabbed && cubePos.distanceTo(this.cubeInitialPosition) > 0.05) {
+        this.cubeGrabbed = true;
+      }
+      if (this.cubeGrabbed) {
+        const targetPos = new THREE.Vector3();
+        this.currentTarget.object3D.getWorldPosition(targetPos);
+        if (cubePos.distanceTo(targetPos) < 0.15) {
+          // Remove cube and target.
+          if (this.currentCube.parentNode) { this.sceneEl.removeChild(this.currentCube); }
+          if (this.currentTarget.parentNode) { this.sceneEl.removeChild(this.currentTarget); }
+          this.currentCube = null;
+          this.currentTarget = null;
+          this.cubeGrabbed = false;
+          // Now that the cube trial is complete, move to TOUCHINGOBJECT state.
+          this.enterState(this.STATES.TOUCHINGOBJECT);
+        }
+      }
     }
   }
 });
+
