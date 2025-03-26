@@ -1,8 +1,20 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>VR Experiment - Cube Moving with Joystick Movement and Rotation</title>
+    <title>VR Experiment - Debugging Cube & Sphere Interactions with Patch</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- Patch for THREE.Geometry compatibility -->
+    <script>
+      if (typeof THREE.Geometry === "undefined") {
+        console.warn("THREE.Geometry not found; patching it with THREE.BufferGeometry.");
+        THREE.Geometry = function() {};
+        THREE.Geometry.prototype = Object.create(THREE.BufferGeometry.prototype);
+      }
+    </script>
+    <script>
+      console.log("Script loaded.");
+      // Your other JavaScript code goes here.
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/aframe-physics-system@4.0.1/dist/aframe-physics-system.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/super-hands@4.0.5/dist/super-hands.min.js"></script>
   </head>
@@ -18,12 +30,12 @@
           kinematic-body
           super-hands
         ></a-entity>
-        <!-- Right Hand -->
+        <!-- Right Hand (Collider now includes both grabbable and hoverable objects) -->
         <a-entity 
           id="rightHand"
           hand-controls="hand: right;"
           kinematic-body
-          sphere-collider="objects: .grabbable; radius: 0.3"
+          sphere-collider="objects: .grabbable, [hoverable]; radius: 0.3"
           super-hands
           joystick-rotation="speed: 45"
         ></a-entity>
@@ -38,10 +50,17 @@
         <a-plane width="2" height="1" color="#333" opacity="0.7"></a-plane>
         <a-text id="uiText" value="" align="center" position="0 0 0.1" width="1.8"></a-text>
       </a-entity>
+
+      <!-- Additional Spheres: They now have the "hoverable" attribute -->
+      <a-sphere id="sphere1" position="-1 1.5 -2" radius="0.2" color="#FFC65D" disappear-on-touch hoverable></a-sphere>
+      <a-sphere id="sphere2" position="1 1.5 -2" radius="0.2" color="#FFC65D" disappear-on-touch hoverable></a-sphere>
+
+      <!-- Trial Checker Component -->
+      <a-entity trial-checker></a-entity>
     </a-scene>
 
     <script>
-      // Movement Component
+      // Movement Component with Debug Logs
       AFRAME.registerComponent("joystick-movement", {
         schema: { speed: { type: "number", default: 1.5 } },
         init: function () {
@@ -49,6 +68,7 @@
           document.querySelector("#leftHand").addEventListener("thumbstickmoved", (evt) => {
             this.joystick.x = evt.detail.x;
             this.joystick.y = evt.detail.y;
+            console.log("Left hand thumbstick moved:", evt.detail);
           });
         },
         tick: function (time, deltaTime) {
@@ -65,13 +85,14 @@
         }
       });
 
-      // Rotation Component
+      // Rotation Component with Debug Logs
       AFRAME.registerComponent("joystick-rotation", {
         schema: { speed: { type: "number", default: 45 } },
         init: function () {
           this.rotationInput = 0;
           this.el.addEventListener("thumbstickmoved", (evt) => {
             this.rotationInput = evt.detail.x;
+            console.log("Thumbstick rotation moved:", evt.detail);
           });
         },
         tick: function (time, deltaTime) {
@@ -83,19 +104,54 @@
         }
       });
 
-      // Physics Toggle Component (Updated)
+      // Physics Toggle Component with Debug Logs
       AFRAME.registerComponent("disable-physics-on-grab", {
         init: function () {
           this.el.addEventListener("grab-start", () => {
+            console.log("grab-start triggered for", this.el.id);
             this.el.setAttribute("dynamic-body", "type: kinematic; mass: 0.5; shape: box");
           });
           this.el.addEventListener("grab-end", () => {
+            console.log("grab-end triggered for", this.el.id);
             this.el.setAttribute("dynamic-body", "type: dynamic; mass: 0.5; shape: box");
           });
         }
       });
 
-      // Experiment State Machine
+      // Component for Spheres to Disappear and Trigger Vibration on Touch with Debug Logs
+      AFRAME.registerComponent("disappear-on-touch", {
+        init: function () {
+          console.log("Initializing disappear-on-touch for", this.el.id);
+          this.el.addEventListener("hover-start", (evt) => {
+            console.log("hover-start event for", this.el.id, evt);
+            // Attempt to trigger haptic feedback on the interacting hand.
+            const handEl = evt.detail && evt.detail.hand;
+            if (handEl) {
+              console.log("Detected interacting hand:", handEl.id);
+              const trackedControls = handEl.components["tracked-controls"];
+              if (trackedControls && trackedControls.controller) {
+                const gamepad = trackedControls.controller.gamepad;
+                if (gamepad && gamepad.hapticActuators && gamepad.hapticActuators.length > 0) {
+                  console.log("Triggering haptic pulse for", handEl.id);
+                  gamepad.hapticActuators[0].pulse(1.0, 100);
+                } else {
+                  console.warn("No haptic actuators found for", handEl.id);
+                }
+              } else {
+                console.warn("No tracked-controls or controller available for", handEl.id);
+              }
+            } else {
+              console.warn("No hand element found in hover-start event for", this.el.id);
+            }
+            console.log("Removing sphere", this.el.id);
+            if (this.el.parentNode) {
+              this.el.parentNode.removeChild(this.el);
+            }
+          });
+        }
+      });
+
+      // Experiment State Machine and UI Updates
       const STATES = {
         WELCOME: "WELCOME",
         CALIBRATE: "CALIBRATE",
@@ -113,10 +169,12 @@
 
       function updateUIText(text) {
         document.querySelector("#uiText").setAttribute("value", text);
+        console.log("UI text updated:", text);
       }
 
       function enterState(state) {
         experimentState = state;
+        console.log("Entering state:", state);
         switch (state) {
           case STATES.WELCOME:
             updateUIText(
@@ -141,6 +199,7 @@
         
         // Create Cube
         currentCube = document.createElement("a-box");
+        currentCube.setAttribute("id", "cube-" + trialCounter);
         currentCube.setAttribute("color", "#4CC3D9");
         currentCube.setAttribute("width", "0.3");
         currentCube.setAttribute("height", "0.3");
@@ -150,22 +209,25 @@
         currentCube.setAttribute("grabbable", "");
         currentCube.setAttribute("disable-physics-on-grab", "");
         currentCube.classList.add("grabbable");
+        console.log("Creating cube", currentCube.id);
         sceneEl.appendChild(currentCube);
 
         // Create Target
         currentTarget = document.createElement("a-ring");
+        currentTarget.setAttribute("id", "target-" + trialCounter);
         currentTarget.setAttribute("color", "red");
         currentTarget.setAttribute("radius-inner", "0.2");
         currentTarget.setAttribute("radius-outer", "0.3");
         currentTarget.setAttribute("position", "1 1.5 -1");
         currentTarget.setAttribute("rotation", "-90 0 0");
+        console.log("Creating target", currentTarget.id);
         sceneEl.appendChild(currentTarget);
 
         cubeInitialPosition = new THREE.Vector3(0, 1.5, -1);
         cubeGrabbed = false;
       }
 
-      // Trial Checker Component
+      // Trial Checker Component with Debug Logs
       AFRAME.registerComponent("trial-checker", {
         tick: function () {
           if (experimentState === STATES.MOVINGOBJECT && currentCube && currentTarget) {
@@ -174,6 +236,7 @@
             
             if (!cubeGrabbed && cubePos.distanceTo(cubeInitialPosition) > 0.05) {
               cubeGrabbed = true;
+              console.log("Cube has been grabbed:", currentCube.id);
             }
 
             if (cubeGrabbed) {
@@ -181,37 +244,46 @@
               currentTarget.object3D.getWorldPosition(targetPos);
               
               if (cubePos.distanceTo(targetPos) < 0.3) {
+                console.log("Cube reached target. Trial complete.");
                 trialCounter++;
-                currentCube.parentNode?.removeChild(currentCube);
-                currentTarget.parentNode?.removeChild(currentTarget);
+                if (currentCube.parentNode) {
+                  currentCube.parentNode.removeChild(currentCube);
+                }
+                if (currentTarget.parentNode) {
+                  currentTarget.parentNode.removeChild(currentTarget);
+                }
                 currentCube = null;
                 currentTarget = null;
                 cubeGrabbed = false;
 
-                trialCounter < totalTrials 
-                  ? setTimeout(() => enterState(STATES.MOVINGOBJECT), 500)
-                  : enterState(STATES.FINISH);
+                if (trialCounter < totalTrials) {
+                  setTimeout(() => enterState(STATES.MOVINGOBJECT), 500);
+                } else {
+                  enterState(STATES.FINISH);
+                }
               }
             }
           }
         }
       });
-      document.querySelector("a-scene").setAttribute("trial-checker", "");
-
-      // Event Listeners
+      
+      // Event Listeners for State Changes with Debug Logs
       document.querySelector("#rightHand").addEventListener("gripdown", () => {
+        console.log("Right hand gripdown event detected");
         if (experimentState === STATES.WELCOME) enterState(STATES.CALIBRATE);
       });
 
       document.querySelector("#rightHand").addEventListener("triggerdown", () => {
+        console.log("Right hand triggerdown event detected");
         if (experimentState === STATES.CALIBRATE) {
           document.querySelector("#rig").setAttribute("position", "0 1.6 0");
           enterState(STATES.MOVINGOBJECT);
         }
       });
 
-      // Initialize
+      // Initialize Experiment
       enterState(STATES.WELCOME);
     </script>
   </body>
 </html>
+
