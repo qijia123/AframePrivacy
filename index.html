@@ -3,90 +3,37 @@
   <head>
     <title>VR Experiment - Cube Moving with Joystick Movement and Rotation</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/wmurphyrd/aframe-super-hands-component@latest/dist/aframe-super-hands.min.js"></script>
-    <script>
-      // Ensure THREE.Geometry is defined
-      if (typeof THREE !== 'undefined') {
-          THREE.Geometry = class Geometry {
-             constructor() {
-                this.vertices = [];
-                this.faces = [];
-            }
-            fromBufferGeometry(bufferGeometry) {
-                const positionAttribute = bufferGeometry.getAttribute('position');
-                this.vertices = [];
-                for (let i = 0; i < positionAttribute.count; i++) {
-                    this.vertices.push(new THREE.Vector3().fromBufferAttribute(positionAttribute, i));
-                }
-                return this;
-            }
-        };
-    }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-physics-system@4.0.1/dist/aframe-physics-system.compat.js"></script>
-    <style>
-        .a-enter-vr-button {
-          position: fixed;
-          top: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 9999;
-      
-          /* Make the button large and fully opaque */
-          font-size: 3em;              /* Scales up everything */
-          padding: 15px 30px !important;          /* More space around text */
-          background-color: #fff !important;
-          color: #000 !important;
-          opacity: 1 !important;
-          border: none !important;
-          border-radius: 10px;
-          box-shadow: none !important;
-      
-          /* Center any custom text we insert */
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-      
-        /* Hide the default A-Frame VR icon (an SVG) */
-        .a-enter-vr-button svg {
-          display: none !important;
-        }
-      
-        /* Inject custom text (instead of the hidden icon) */
-        .a-enter-vr-button::after {
-          content: 'Enter VR';    /* The text you want displayed */
-          color: #000;
-          font-size: 2em;         /* 1em here = 3em overall (from parent) */
-          line-height: 1;
-          text-align: center;
-        }
-    </style>          
+    <script src="https://cdn.jsdelivr.net/npm/aframe-physics-system@4.0.1/dist/aframe-physics-system.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/super-hands@4.0.5/dist/super-hands.min.js"></script>
   </head>
   <body>
-    <a-scene physics="debug: true; gravity: -9.8" id="scene">
+    <a-scene physics="debug: false; gravity: -9.8" id="scene">
+      <!-- Camera Rig -->
       <a-entity id="rig" position="0 1.6 0" joystick-movement="speed: 1.5">
         <a-camera></a-camera>
+        <!-- Left Hand -->
         <a-entity 
-          id="leftHand" 
-          hand-controls="hand: left; handModelStyle: lowPoly" 
-          kinematic-body 
-          super-hands>
-        </a-entity>
+          id="leftHand"
+          hand-controls="hand: left;"
+          kinematic-body
+          super-hands
+        ></a-entity>
+        <!-- Right Hand -->
         <a-entity 
-         id="rightHand" 
-         hand-controls="hand: right; handModelStyle: lowPoly" 
-         kinematic-body 
-         sphere-collider="objects: .grabbable, .hoverable; radius: 0.5; debug: true" 
-         super-hands="colliderEvent: collisions; colliderEventProperty: els; 
-         stretchable: true; maxDistance: 1.0"
-         joystick-rotation="speed: 60">
+          id="rightHand"
+          hand-controls="hand: right;"
+          kinematic-body
+          sphere-collider="objects: .grabbable; radius: 0.3"
+          super-hands
+          joystick-rotation="speed: 45"
+        ></a-entity>
       </a-entity>
-    
 
+      <!-- Environment -->
       <a-plane static-body position="0 0 -4" rotation="-90 0 0" width="20" height="20" color="#7BC8A4"></a-plane>
       <a-sky color="#ECECEC"></a-sky>
 
+      <!-- UI -->
       <a-entity id="uiPanel" position="0 2.5 -1.5">
         <a-plane width="2" height="1" color="#333" opacity="0.7"></a-plane>
         <a-text id="uiText" value="" align="center" position="0 0 0.1" width="1.8"></a-text>
@@ -94,20 +41,21 @@
     </a-scene>
 
     <script>
-      // Joystick movement component: moves the rig based on thumbstick input on the left controller.
+      // Movement Component
       AFRAME.registerComponent("joystick-movement", {
         schema: { speed: { type: "number", default: 1.5 } },
-        init() {
+        init: function () {
           this.joystick = { x: 0, y: 0 };
-          document.querySelector("#leftHand").addEventListener("thumbstickmoved", evt => {
-            this.joystick = { x: evt.detail.x, y: evt.detail.y };
+          document.querySelector("#leftHand").addEventListener("thumbstickmoved", (evt) => {
+            this.joystick.x = evt.detail.x;
+            this.joystick.y = evt.detail.y;
           });
         },
-        tick(time, deltaTime) {
+        tick: function (time, deltaTime) {
           const dt = deltaTime / 1000;
           const rigEl = this.el;
-          const rigRotation = rigEl.getAttribute("rotation").y;
           const inputVector = new THREE.Vector3(this.joystick.x, 0, this.joystick.y);
+          const rigRotation = rigEl.getAttribute("rotation").y;
           const quat = new THREE.Quaternion().setFromAxisAngle(
             new THREE.Vector3(0, 1, 0),
             THREE.MathUtils.degToRad(rigRotation)
@@ -117,52 +65,51 @@
         }
       });
 
-      // Joystick rotation component: rotates the rig based on thumbstick input on the right controller.
+      // Rotation Component
       AFRAME.registerComponent("joystick-rotation", {
         schema: { speed: { type: "number", default: 45 } },
-        init() {
+        init: function () {
           this.rotationInput = 0;
-          this.el.addEventListener("thumbstickmoved", evt => {
+          this.el.addEventListener("thumbstickmoved", (evt) => {
             this.rotationInput = evt.detail.x;
           });
         },
-        tick(time, deltaTime) {
+        tick: function (time, deltaTime) {
           const dt = deltaTime / 1000;
           const rigEl = document.querySelector("#rig");
-          let currentRotation = rigEl.getAttribute("rotation");
+          const currentRotation = rigEl.getAttribute("rotation");
           currentRotation.y += this.rotationInput * this.data.speed * dt;
           rigEl.setAttribute("rotation", currentRotation);
         }
       });
 
-      // Disable physics when an object is grabbed.
+      // Physics Toggle Component (Updated)
       AFRAME.registerComponent("disable-physics-on-grab", {
-        init() {
+        init: function () {
           this.el.addEventListener("grab-start", () => {
-            this.el.removeAttribute("dynamic-body");
-            this.el.setAttribute("static-body", ""); // Prevent falling during grab
+            this.el.setAttribute("dynamic-body", "type: kinematic; mass: 0.5; shape: box");
           });
           this.el.addEventListener("grab-end", () => {
-            this.el.removeAttribute("static-body");
-            this.el.setAttribute("dynamic-body", "shape: box; mass: 2");
+            this.el.setAttribute("dynamic-body", "type: dynamic; mass: 0.5; shape: box");
           });
         }
       });
 
-      // Experiment state machine constants and variables.
+      // Experiment State Machine
       const STATES = {
         WELCOME: "WELCOME",
         CALIBRATE: "CALIBRATE",
         MOVINGOBJECT: "MOVINGOBJECT",
         FINISH: "FINISH"
       };
-      let experimentState = STATES.WELCOME,
-          trialCounter = 0,
-          totalTrials = 5,
-          currentCube = null,
-          currentTarget = null,
-          cubeInitialPosition = null,
-          cubeGrabbed = false;
+
+      let experimentState = STATES.WELCOME;
+      let trialCounter = 0;
+      const totalTrials = 5;
+      let currentCube = null;
+      let currentTarget = null;
+      let cubeInitialPosition = null;
+      let cubeGrabbed = false;
 
       function updateUIText(text) {
         document.querySelector("#uiText").setAttribute("value", text);
@@ -173,121 +120,97 @@
         switch (state) {
           case STATES.WELCOME:
             updateUIText(
-              "Welcome!\nUse your right controller grip to pick up a cube and move it to the red target area.\nDo this 5 times.\nPress the right controller grip to continue."
+              "Welcome!\nUse right grip to pick up cubes\nRight trigger to calibrate\n5 trials total"
             );
             break;
           case STATES.CALIBRATE:
-            updateUIText("Calibrate:\nHold your right controller against your chest and press the trigger.");
+            updateUIText("Hold right controller at chest height\nPress trigger to calibrate");
             break;
           case STATES.MOVINGOBJECT:
-            updateUIText(`Trial ${trialCounter + 1}:\nGrab the green cube and move it to the red target area.\nRelease the grip to drop it.`);
+            updateUIText(`Trial ${trialCounter + 1}/${totalTrials}\nGrab cube → Red target`);
             startCubeTrial();
             break;
           case STATES.FINISH:
-            updateUIText("Task completed!\nThank you for participating.");
+            updateUIText("Experiment Complete!\nThank you!");
             break;
         }
       }
 
-      // Create and start a trial by adding a cube and a target to the scene.
       function startCubeTrial() {
         const sceneEl = document.querySelector("a-scene");
         
-        // Create the cube.
+        // Create Cube
         currentCube = document.createElement("a-box");
-        currentCube.setAttribute("color", "green");
-        currentCube.setAttribute("depth", "0.2");
-        currentCube.setAttribute("height", "0.2");
-        currentCube.setAttribute("width", "0.2");
-        currentCube.setAttribute("dynamic-body", "shape: box;");
-        currentCube.setAttribute("grabbable", "stretchable: true; constrainToLocal: true");
+        currentCube.setAttribute("color", "#4CC3D9");
+        currentCube.setAttribute("width", "0.3");
+        currentCube.setAttribute("height", "0.3");
+        currentCube.setAttribute("depth", "0.3");
+        currentCube.setAttribute("position", "0 1.5 -1");
+        currentCube.setAttribute("dynamic-body", "shape: box; mass: 0.5");
+        currentCube.setAttribute("grabbable", "");
         currentCube.setAttribute("disable-physics-on-grab", "");
-        currentCube.classList.add("grabbable", "hoverable"); // Correct class names
-       
-        currentCube.setAttribute("position", "0 2.6 -0.5");
-
-        currentCube.addEventListener("grab-start", () => {
-          console.log("Grab started");
-          console.log("Grab started at position:", currentCube.object3D.position);
-          console.log("Right hand position:", document.querySelector("#rightHand").object3D.position);
-        });
-        currentCube.addEventListener("grab-end", () => {
-          console.log("Grab ended. Cube position:", currentCube.object3D.position);
-        });
-        
+        currentCube.classList.add("grabbable");
         sceneEl.appendChild(currentCube);
 
-        // Update the sphere collider on the right hand.
-        const rightHandEl = document.querySelector("#rightHand");
-        console.log("Super-hands component:", rightHandEl.components['super-hands']);
-        console.log("Right hand components:", rightHandEl.components);
-        rightHandEl.addEventListener('abuttondown', () => console.log('A pressed'));
-        rightHandEl.addEventListener('bbuttondown', () => console.log('B pressed'));
-        if (rightHandEl.components["sphere-collider"]) {
-            rightHandEl.components["sphere-collider"].update();
-        }
-        // Create the target.
-        currentTarget = document.createElement("a-box");
+        // Create Target
+        currentTarget = document.createElement("a-ring");
         currentTarget.setAttribute("color", "red");
-        currentTarget.setAttribute("depth", "0.15");
-        currentTarget.setAttribute("height", "0.15");
-        currentTarget.setAttribute("width", "0.15");
-        currentTarget.setAttribute("position", "0.5 2.6 -0.5");
-        currentTarget.setAttribute("material", "opacity: 0.3; transparent: true; wireframe: true;");
+        currentTarget.setAttribute("radius-inner", "0.2");
+        currentTarget.setAttribute("radius-outer", "0.3");
+        currentTarget.setAttribute("position", "1 1.5 -1");
+        currentTarget.setAttribute("rotation", "-90 0 0");
         sceneEl.appendChild(currentTarget);
 
-        cubeInitialPosition = new THREE.Vector3(0, 2.6, -0.5);
+        cubeInitialPosition = new THREE.Vector3(0, 1.5, -1);
         cubeGrabbed = false;
       }
-      
 
-      // Trial checker component: monitors the cube position and checks if the trial is completed.
+      // Trial Checker Component
       AFRAME.registerComponent("trial-checker", {
-        tick() {
+        tick: function () {
           if (experimentState === STATES.MOVINGOBJECT && currentCube && currentTarget) {
             const cubePos = new THREE.Vector3();
             currentCube.object3D.getWorldPosition(cubePos);
+            
             if (!cubeGrabbed && cubePos.distanceTo(cubeInitialPosition) > 0.05) {
               cubeGrabbed = true;
             }
+
             if (cubeGrabbed) {
               const targetPos = new THREE.Vector3();
               currentTarget.object3D.getWorldPosition(targetPos);
-              if (cubePos.distanceTo(targetPos) < 0.15) {
+              
+              if (cubePos.distanceTo(targetPos) < 0.3) {
                 trialCounter++;
-                currentCube.remove();
-                currentTarget.remove();
-                currentCube = currentTarget = null;
+                currentCube.parentNode?.removeChild(currentCube);
+                currentTarget.parentNode?.removeChild(currentTarget);
+                currentCube = null;
+                currentTarget = null;
                 cubeGrabbed = false;
-                setTimeout(() => {
-                  enterState(trialCounter < totalTrials ? STATES.MOVINGOBJECT : STATES.FINISH);
-                }, 500);
+
+                trialCounter < totalTrials 
+                  ? setTimeout(() => enterState(STATES.MOVINGOBJECT), 500)
+                  : enterState(STATES.FINISH);
               }
             }
           }
         }
       });
-
-      // Activate the trial checker.
       document.querySelector("a-scene").setAttribute("trial-checker", "");
 
-      // Controller event listeners to transition between states.
-      const rightHandEl = document.querySelector("#rightHand");
-      rightHandEl.addEventListener("gripdown", () => {
-        if (experimentState === STATES.WELCOME) {
-          console.log("Right controller grip pressed. Advancing to CALIBRATE.");
-          enterState(STATES.CALIBRATE);
-        }
+      // Event Listeners
+      document.querySelector("#rightHand").addEventListener("gripdown", () => {
+        if (experimentState === STATES.WELCOME) enterState(STATES.CALIBRATE);
       });
-      rightHandEl.addEventListener("triggerdown", () => {
+
+      document.querySelector("#rightHand").addEventListener("triggerdown", () => {
         if (experimentState === STATES.CALIBRATE) {
-          console.log("Right controller trigger pressed. Calibrating and advancing to MOVINGOBJECT.");
           document.querySelector("#rig").setAttribute("position", "0 1.6 0");
           enterState(STATES.MOVINGOBJECT);
         }
       });
 
-      // Start with the welcome state.
+      // Initialize
       enterState(STATES.WELCOME);
     </script>
   </body>
