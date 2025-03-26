@@ -73,46 +73,42 @@ AFRAME.registerSystem("trial-manager", {
   },
 
   startCubeTrial: function () {
-    // Remove any existing cube or target from previous trial.
+    // // Remove any existing cube or target from previous trial.
     if (this.currentCube) { this.sceneEl.removeChild(this.currentCube); }
     if (this.currentTarget) { this.sceneEl.removeChild(this.currentTarget); }
 
     // Create the cube.
-    this.currentCube = document.createElement("a-box");
-    this.currentCube.setAttribute("color", "green");
-    this.currentCube.setAttribute("depth", "1");
-    this.currentCube.setAttribute("height", "1");
-    this.currentCube.setAttribute("width", "1");
-    this.currentCube.setAttribute("dynamic-body", "shape: box;");
-    this.currentCube.setAttribute("grabbable", "");
-    this.currentCube.setAttribute("disable-physics-on-grab", "");
-    // this.currentCube.classList.add("grabbable");
-    this.currentCube.setAttribute("position", "0 1.6 -2");
-    this.cubeInitialPosition = new THREE.Vector3(0, 1.6, -2);
+    //<a-entity class="cube" mixin="cube" position="0 1.6 -1.25" material="color: red"></a-entity>
+    this.currentCube = document.createElement("a-entity");
+    this.currentCube.setAttribute("material", "color: green");
+    this.currentCube.setAttribute("mixin", "cube");
+    this.currentCube.setAttribute("class", "cube");
+    this.currentCube.setAttribute("position", "0 1.6 -1.25");
+    this.cubeInitialPosition = new THREE.Vector3(0, 1.6, -1.25);
 
-    // Optionally add event listeners.
-    this.currentCube.addEventListener("grab-start", () => console.log("Grab started"));
-    this.currentCube.addEventListener("grab-end", () => console.log("Grab ended"));
+    // // Optionally add event listeners.
+    // this.currentCube.addEventListener("grab-start", () => console.log("Grab started"));
+    // this.currentCube.addEventListener("grab-end", () => console.log("Grab ended"));
 
     this.sceneEl.appendChild(this.currentCube);
 
-    // Update the sphere collider on the right hand.
-    const rightHandEl = document.querySelector("#rightHand");
-    if (rightHandEl && rightHandEl.components["sphere-collider"]) {
-      rightHandEl.components["sphere-collider"].update();
-    }
+    // // Update the sphere collider on the right hand.
+    // const rightHandEl = document.querySelector("#rightHand");
+    // if (rightHandEl && rightHandEl.components["sphere-collider"]) {
+    //   rightHandEl.components["sphere-collider"].update();
+    // }
 
     // Create the target.
-    this.currentTarget = document.createElement("a-box");
-    this.currentTarget.setAttribute("color", "red");
-    this.currentTarget.setAttribute("depth", "1.5");
-    this.currentTarget.setAttribute("height", "1.5");
-    this.currentTarget.setAttribute("width", "1.5");
-    this.currentTarget.setAttribute("position", "3 2.5 -2");
-    this.currentTarget.setAttribute("material", "opacity: 0.3; transparent: true; wireframe: true;");
+    // <a-entity class="target" mixin="target" position = "-1 1.6 -1"
+    //             material="src:#colortransform" shadow></a-entity>
+    this.currentTarget = document.createElement("a-entity");
+    this.currentTarget.setAttribute("material", "color: red");
+    this.currentTarget.setAttribute("mixin", "target");
+    this.currentTarget.setAttribute("class", "target");
+    this.currentTarget.setAttribute("position", "-1 1.6 -1");
     this.sceneEl.appendChild(this.currentTarget);
 
-    // Reset trial-specific flags.
+    // // Reset trial-specific flags.
     this.cubeGrabbed = false;
   },
 

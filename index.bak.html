@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>VR Experiment - Cube Moving with Joystick Movement and Rotation</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/super-hands/dist/super-hands.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.js"></script>
+    <script src="https://unpkg.com/aframe-physics-extras/dist/aframe-physics-extras.min.js"></script>
+    <script src="https://unpkg.com/aframe-event-set-component@^4.1.1/dist/aframe-event-set-component.min.js"></script>
+
+    <script src="components/joystick-movement-component.js"></script>
+    <script src="components/joystick-rotation-component.js"></script>
+    <script src="components/trial-manager-system.js"></script>
+
+    <script src="https://unpkg.com/aframe-environment-component@1.5.x/dist/aframe-environment-component.min.js"></script>
+
+    <script>
+      
+      // Disable physics when an object is grabbed.
+      AFRAME.registerComponent("disable-physics-on-grab", {
+        init() {
+          this.el.addEventListener("grab-start", () => this.el.removeAttribute("dynamic-body"));
+          this.el.addEventListener("grab-end", () => this.el.setAttribute("dynamic-body", "shape: box;"));
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <a-scene physics="gravity: -9.8" id="scene" trial-manager>
+      <a-assets>
+        <a-mixin id="cube" geometry="primitive: box; width: 0.33; height: 0.33; depth: 0.33"
+        hoverable grabbable stretchable draggable
+        event-set__hoveron="_event: hover-start; material.opacity: 0.1; transparent: true"
+        event-set__hoveroff="_event: hover-end; material.opacity: 1; transparent: false"
+        dynamic-body shadow>
+      </a-mixin>
+      </a-assets>
+      <a-entity id="rig" position="0 0 0" joystick-movement="speed: 1.5">
+        <a-camera></a-camera>
+        <a-entity 
+          id="leftHand" 
+          hand-controls="hand: left; handModelStyle: lowPoly" 
+          kinematic-body 
+          super-hands>
+        </a-entity>
+        <!-- sphere-collider="objects: .grabbable; radius: 0.3; debug: true"  -->
+        <a-entity 
+          id="rightHand" 
+          hand-controls="hand: right; handModelStyle: lowPoly" 
+          physics-collider phase-shift
+          collision-filter="collisionForces: false"
+          static-body="shape: sphere; sphereRadius: 0.02"
+          super-hands="colliderEvent: collisions;
+                              colliderEventProperty: els;
+                              colliderEndEvent: collisions;
+                              colliderEndEventProperty: clearedEls;" 
+          joystick-rotation="speed: 60">
+        </a-entity>
+      </a-entity>
+
+      <a-entity class="cube" mixin="cube" position="0 0.265 -2" material="color: red"></a-entity>
+
+      <a-plane static-body position="0 0 -4" rotation="-90 0 0" width="20" height="20" color="#7BC8A4"></a-plane>
+      <a-sky color="#ECECEC"></a-sky>
+
+      <a-entity id="uiPanel" position="0 2.5 -1.5">
+        <a-plane width="2" height="1" color="#333" opacity="0.7"></a-plane>
+        <a-text id="uiText" value="" align="center" position="0 0 0.1" width="1.8"></a-text>
+      </a-entity>
+    </a-scene>
+  </body>
+</html>
+

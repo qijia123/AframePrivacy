@@ -3,7 +3,7 @@
         schema: { speed: { type: "number", default: 45 } },
         init() {
           this.rotationInput = 0;
-          this.el.addEventListener("thumbstickmoved", evt => {
+          document.querySelector("#rightHand").addEventListener("thumbstickmoved", evt => {
             this.rotationInput = evt.detail.x;
           });
         },
