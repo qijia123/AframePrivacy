@@ -9,12 +9,13 @@ AFRAME.registerSystem("trial-manager", {
     };
 
     this.experimentState = this.STATES.WELCOME,
-      this.trialCounter = 0,
-      this.totalTrials = 5,
-      this.currentCube = null,
-      this.currentTarget = null,
-      this.cubeInitialPosition = null,
-      this.cubeGrabbed = false;
+    this.trialCounter = 0,
+    this.totalTrials = 5,
+    this.currentCube = null,
+    this.currentTarget = null,
+    this.cubeInitialPosition = null,
+    this.cubeGrabbed = false;
+    this.onTarget = false;
     this.uiTextEl = document.querySelector("#uiText");
     this.sceneEl = this.el;
 
@@ -33,7 +34,6 @@ AFRAME.registerSystem("trial-manager", {
         this.enterState(this.STATES.MOVINGOBJECT);
       }
     });
-
 
     this.enterState(this.experimentState);
 
@@ -86,17 +86,11 @@ AFRAME.registerSystem("trial-manager", {
     this.currentCube.setAttribute("position", "0 1.6 -1.25");
     this.cubeInitialPosition = new THREE.Vector3(0, 1.6, -1.25);
 
-    // // Optionally add event listeners.
-    // this.currentCube.addEventListener("grab-start", () => console.log("Grab started"));
-    // this.currentCube.addEventListener("grab-end", () => console.log("Grab ended"));
+    this.currentCube.addEventListener("drag-drop", (evt) => {
+      setTimeout(() => this.completeTrial(), 500);
+    });
 
     this.sceneEl.appendChild(this.currentCube);
-
-    // // Update the sphere collider on the right hand.
-    // const rightHandEl = document.querySelector("#rightHand");
-    // if (rightHandEl && rightHandEl.components["sphere-collider"]) {
-    //   rightHandEl.components["sphere-collider"].update();
-    // }
 
     // Create the target.
     // <a-entity class="target" mixin="target" position = "-1 1.6 -1"
@@ -107,45 +101,17 @@ AFRAME.registerSystem("trial-manager", {
     this.currentTarget.setAttribute("class", "target");
     this.currentTarget.setAttribute("position", "-1 1.6 -1");
     this.sceneEl.appendChild(this.currentTarget);
-
-    // // Reset trial-specific flags.
-    this.cubeGrabbed = false;
   },
 
   // Call this function when the trial has been successfully completed.
   completeTrial: function () {
     this.trialCounter++;
-    if (this.trialCounter >= this.totalTrials) {
-      this.enterState(this.STATES.FINISH);
-    } else {
-      this.enterState(this.STATES.MOVINGOBJECT);
-    }
+    this.trialCounter === this.totalTrials
+    ? this.enterState(this.STATES.FINISH)
+    : this.enterState(this.STATES.MOVINGOBJECT);
   },
 
   tick() {
-    if (!(this.sceneEl.is("vr-mode"))) return;
-
-    if (this.experimentState === this.STATES.MOVINGOBJECT && this.currentCube && this.currentTarget) {
-      //   const cubePos = new THREE.Vector3();
-      //   this.currentCube.object3D.getWorldPosition(cubePos);
-      //   if (!this.cubeGrabbed && cubePos.distanceTo(this.cubeInitialPosition) > 0.05) {
-      //     this.cubeGrabbed = true;
-      //   }
-      //   console.log(this.cubeGrabbed);
-      //   if (this.cubeGrabbed) {
-      //     const targetPos = new THREE.Vector3();
-      //     this.currentTarget.object3D.getWorldPosition(targetPos);
-      //     if (cubePos.distanceTo(targetPos) < 0.15) {
-      //       this.trialCounter++;
-      //       this.currentCube.remove();
-      //       this.currentTarget.remove();
-      //       this.currentCube = currentTarget = null;
-      //       this.cubeGrabbed = false;
-      //       setTimeout(() => {
-      //         this.enterState(this.trialCounter < this.totalTrials ? this.STATES.MOVINGOBJECT : this.STATES.FINISH);
-      //       }, 500);
-      //     }
-      //   }
-    }
+    // if (!(this.sceneEl.is("vr-mode"))) return;
   }
 });
